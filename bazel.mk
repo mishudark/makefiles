@@ -33,7 +33,7 @@ version: ## Prints the bazel version
 separator:
 	@echo "-----------------------------------"
 
-build: ## Build binaries from coupons and api packages
+build: ## Build binaries
 	@make version
 	@$(.BAZEL) build $(BUILD_FLAGS) //services/traveler:traveler \
 
@@ -43,7 +43,7 @@ docker: ## Build docker images
 
 gen: # Generate BUILD.bazel files
 	@make version
-	@$(.BAZEL) run //:gazelle
+	@$(.BAZEL) run //:gazelle -- update -exclude=protos
 
 deps: # ADd dependencies based on go.mod
 	@$(.BAZEL) run $(BUILD_FLAGS) //:gazelle -- update-repos -from_file=go.mod
@@ -149,8 +149,10 @@ export BAZEL_RC
 endif
 
 bazelisk: # Download bazelisk
-	curl -sLo tools/bazelisk-darwin-amd64 https://github.com/bazelbuild/bazelisk/releases/download/v$(BAZELISK_VERSION)/bazelisk-darwin-amd64
+	curl -sLo tools/bazelisk-darwin-amd64 https://github.com/bazelbuild/bazelisk/releases/download/v$(.BAZELISK_VERSION)/bazelisk-darwin-amd64
 	curl -sLo tools/bazelisk-linux-amd64 https://github.com/bazelbuild/bazelisk/releases/download/v$(.BAZELISK_VERSION)/bazelisk-linux-amd64
+	chmod +x ./tools/bazelisk-darwin-amd64
+	chmod +x ./tools/bazelisk-linux-amd64
 
 setup: # Setup the initial files to run bazel
 	@make init
