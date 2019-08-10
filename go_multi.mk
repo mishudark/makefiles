@@ -5,7 +5,7 @@ export GOBIN   := $(GOPATH)/bin
 export PATH    := $(GOBIN):$(PATH)
 export GOPROXY := https://goproxy.io
 
-GO_MAIN_PATH        ?=
+GO_MAIN_PATH        ?= ./cmd
 IMAGE_ENABLE        ?= false
 IMAGE_BASE          ?= golang:alpine
 GO_BUILD_FLAGS      ?= -ldflags "-d -s -w" -tags netgo -installsuffix netgo
@@ -69,25 +69,24 @@ DOCKER_PUBLISH_PWD =
 endef
 export PROJECT_MK_CONTENT
 
-all:
-	$(info project.mk has been created, please review the config there)
-
+init:
 ifneq ($(.PROJECT_MK),$(wildcard $(.PROJECT_MK)))
 	@echo "$$PROJECT_MK_CONTENT" > project.mk
 	@echo "$$PROJECT_TRAVIS" > .travis.yml
 	$(info project.mk has been created, please review the config there)
 	$(info .travis.yml has been created, please configure your CI)
-	$(info )
+	exit 1
 else
-$(call check_defined, GO_MAIN_PATH, path to the main.go package required on project.mk)
+	$(call check_defined, GO_MAIN_PATH, path to the main.go package required on project.mk)
+endif
 
 ifeq ($(IMAGE_ENABLE), true)
 $(call check_defined, DOCKER, please install docker)
 endif
 
-ifeq ($(IMAGE_ENABLE), false)
+#ifeq ($(IMAGE_ENABLE), false)
 $(call check_defined, GO, go is required to perform this operation)
-endif
+#endif
 
 ifeq ($(PUBLISH),true)
 $(call check_defined, DOCKER_PUBLISH_URL, docker registry url required)
@@ -106,11 +105,11 @@ CMD ["./$(.SERVER_NAME)"]
 endef
 export IMAGE_FAST
 
-image-static:
+docker: ## Docker image for every service listed in project.mk
 	@echo "$$IMAGE_FAST" > .Dockerfile
 	@$(foreach svc,$(SERVICES), \
 		echo "------------------------" && \
-		echo "Building ${svc} ..." && \
+		echo "Building binary: $(GO_MAIN_PATH)/$(svc) ..." && \
 		GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build $(GO_BUILD_FLAGS) -o $(.SERVER_NAME) $(GO_MAIN_PATH)/$(svc)	&& \
 		docker build -t $(svc) -f .Dockerfile . &&) true
 
@@ -121,7 +120,7 @@ endif
 
 lint: ## Lint with the standard options
 	@make lint-impl
-lint-impl: |check-linter
+lint-impl: |init check-linter
 	GO111MODULE=on golangci-lint run
 
 gomod:
@@ -129,7 +128,7 @@ ifneq ($(.GOMODFILE),$(wildcard $(.GOMODFILE)))
 $(error go.mod is required)
 endif
 
-local-test:
+local-test: |init
 	GO111MODULE=on CGO_ENABLED=0 go test ./...
 
 cache:
@@ -144,7 +143,7 @@ endif
 ifeq ($(IMAGE_ENABLE), false)
 build: ## Build the project
 	@make build-impl
-build-impl: |gomod
+build-impl: |init gomod
 	@$(foreach svc,$(SERVICES), \
 		echo "------------------------" && \
 		echo "Building $(svc) ..." && \
@@ -158,9 +157,8 @@ vendor: ## Download the dependencies
 vendor-impl: |gomod
 	GO111MODULE=on go mod download
 endif
-endif
 
-publish: ## Publish a container to a docker registry [IMAGE_ENABLE and PUBLISH required]
+publish: ## Publish a container to a docker registry [PUBLISH is required]
 	@docker login -u $(DOCKER_PUBLISH_USER) -p $(DOCKER_PUBLISH_PWD) $(DOCKER_PUBLISH_URL)
 	@$(foreach svc,$(SERVICES), \
 		echo "------------------------" && \
