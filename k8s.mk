@@ -54,7 +54,7 @@ export CLUSTER_ISSUER
 issuer:
 	echo "$$CLUSTER_ISSUER" > issuer.yaml
 	kubectl apply -f issuer.yaml
-	kubectl describe clusterissuer letsencrypt-staging
+	kubectl describe clusterissuer letsencrypt
 
 cert-manager:
 	kubectl create namespace cert-manager
