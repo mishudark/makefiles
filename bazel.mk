@@ -35,18 +35,25 @@ separator:
 
 build: ## Build binaries
 	@make version
-	@$(.BAZEL) build $(BUILD_FLAGS) //services/traveler:traveler \
+	@$(.BAZEL) build $(BUILD_FLAGS) //cmd/server:server
 
 docker: ## Build docker images
 	@make version
-	@$(.BAZEL) build $(BUILD_FLAGS) $(LINUX)  //services/traveler:docker \
+	@$(.BAZEL) build $(BUILD_FLAGS) $(LINUX)  //cmd/server:docker
+
+test: ## Test
+	@make version
+	@$(.BAZEL) build $(TEST_FLAGS) //pkg/...
 
 gen: # Generate BUILD.bazel files
 	@make version
 	@$(.BAZEL) run //:gazelle -- update -exclude=protos
 
-deps: # ADd dependencies based on go.mod
-	@$(.BAZEL) run $(BUILD_FLAGS) //:gazelle -- update-repos -from_file=go.mod
+deps: # Add dependencies based on go.mod
+	@$(.BAZEL) run $(BUILD_FLAGS) //:gazelle -- update-repos -from_file=go.mod -to_macro=repositories.bzl%go_repositories
+
+clean:
+	$(.BAZEL) clean $(BUILD_FLAGS) --expunge
 
 ifndef WORKSPACE
 define WORKSPACE
@@ -59,10 +66,10 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 http_archive(
     name = "io_bazel_rules_go",
     urls = [
-        "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/rules_go/releases/download/0.19.1/rules_go-0.19.1.tar.gz",
-        "https://github.com/bazelbuild/rules_go/releases/download/0.19.1/rules_go-0.19.1.tar.gz",
+        "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/rules_go/releases/download/0.19.3/rules_go-0.19.3.tar.gz",
+        "https://github.com/bazelbuild/rules_go/releases/download/0.19.3/rules_go-0.19.3.tar.gz",
     ],
-    sha256 = "8df59f11fb697743cbb3f26cfb8750395f30471e9eabde0d174c3aebc7a1cd39",
+    sha256 = "313f2c7a23fecc33023563f082f381a32b9b7254f727a7dd2d6380ccc6dfe09b",
 )
 
 load(
@@ -74,10 +81,10 @@ load(
 http_archive(
     name = "bazel_gazelle",
     urls = [
-        "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/bazel-gazelle/releases/download/0.18.1/bazel-gazelle-0.18.1.tar.gz",
-        "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.18.1/bazel-gazelle-0.18.1.tar.gz",
+        "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/bazel-gazelle/releases/download/0.18.2/bazel-gazelle-0.18.2.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.18.2/bazel-gazelle-0.18.2.tar.gz",
     ],
-    sha256 = "be9296bfd64882e3c08e3283c58fcb461fa6dd3c171764fcc4cf322f60615a9b",
+    sha256 = "7fc87f4170011201b1690326e8c16c5d802836e3a0d617d8f75c3af2b23180c4",
 )
 
 load(
@@ -94,9 +101,9 @@ gazelle_dependencies()
 
 http_archive(
     name = "io_bazel_rules_docker",
-    sha256 = "87fc6a2b128147a0a3039a2fd0b53cc1f2ed5adb8716f50756544a572999ae9a",
-    strip_prefix = "rules_docker-0.8.1",
-    urls = ["https://github.com/bazelbuild/rules_docker/archive/v0.8.1.tar.gz"],
+    sha256 = "e513c0ac6534810eb7a14bf025a0f159726753f97f74ab7863c650d26e01d677",
+    strip_prefix = "rules_docker-0.9.0",
+    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.9.0/rules_docker-v0.9.0.tar.gz"],
 )
 
 load(
@@ -113,16 +120,29 @@ load(
 
 container_repositories()
 
-git_repository(
+http_archive(
     name = "io_bazel_rules_k8s",
-    commit = "5648b17d5f9b612cc47031a6fa961e6752fe50e8",
-    remote = "https://github.com/bazelbuild/rules_k8s.git",
-    shallow_since = "1564667278 -0400",
+    sha256 = "91fef3e6054096a8947289ba0b6da3cba559ecb11c851d7bdfc9ca395b46d8d8",
+    strip_prefix = "rules_k8s-0.1",
+    urls = ["https://github.com/bazelbuild/rules_k8s/releases/download/v0.1/rules_k8s-v0.1.tar.gz"],
 )
 
 load("@io_bazel_rules_k8s//k8s:k8s.bzl", "k8s_repositories")
 k8s_repositories()
 
+http_archive(
+    name = "com_google_protobuf",
+    strip_prefix = "protobuf-3.9.1",
+    urls = ["https://github.com/google/protobuf/archive/v3.9.1.zip"],
+    sha256 = "c90d9e13564c0af85fd2912545ee47b57deded6e5a97de80395b6d2d9be64854",
+)
+
+load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
+
+protobuf_deps()
+
+#load("//:repositories.bzl", "go_repositories")
+#go_repositories()
 endef
 export WORKSPACE
 endif
@@ -135,6 +155,7 @@ gazelle(
     name = "gazelle",
     prefix = "github.com/MY_ORG/MY_REPO",
 )
+# gazelle:exclude protos
 endef
 export BUILD_BAZEL
 endif
@@ -145,6 +166,7 @@ build --host_force_python=PY2
 test --host_force_python=PY2
 run --host_force_python=PY2
 endef
+
 export BAZEL_RC
 endif
 
