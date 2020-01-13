@@ -1,6 +1,6 @@
 .BAZELISK         := ./tools/bazelisk
 .UNAME_S          := $(shell uname -s)
-.BAZELISK_VERSION := 0.8.0
+.BAZELISK_VERSION := 1.2.1
 
 ifeq ($(.UNAME_S),Linux)
 	.BAZELISK = ./tools/bazelisk-linux-amd64
