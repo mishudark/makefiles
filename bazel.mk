@@ -156,6 +156,7 @@ gazelle(
     prefix = "github.com/MY_ORG/MY_REPO",
 )
 # gazelle:exclude protos
+# gazelle:proto disable
 endef
 export BUILD_BAZEL
 endif
